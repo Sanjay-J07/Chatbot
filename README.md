@@ -1,6 +1,4 @@
-Here's a README for your Nexus AI Chatbot project:
 
----
 
 # ◈ Nexus AI Chatbot
 
