@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nexus AI Chatbot</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d0e14;
+    --surface: #13141d;
+    --surface2: #1c1d2b;
+    --border: #252638;
+    --accent: #00e5ff;
+    --accent2: #00b8d9;
+    --user: #1a3a5c;
+    --bot: #181926;
+    --text: #e8e9f3;
+    --muted: #6b6d87;
+    --danger: #ff4d6d;
+    --radius: 14px;
+    --font: 'Syne', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; -webkit-font-smoothing: antialiased; }
+
+  /* ── Setup screen ── */
+  #setup {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .setup-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 40px; width: 100%; max-width: 460px;
+    animation: fadeUp .4s ease;
+  }
+  .setup-logo { font-size: 48px; color: var(--accent); text-align: center; margin-bottom: 16px; animation: pulse 3s ease-in-out infinite; }
+  .setup-title { font-size: 26px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+  .setup-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 28px; }
+  .setup-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; display: block; }
+  .setup-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-family: var(--mono); font-size: 13px;
+    padding: 12px 14px; outline: none; transition: border-color .2s; margin-bottom: 20px;
+  }
+  .setup-input:focus { border-color: var(--accent); }
+  .setup-btn {
+    width: 100%; background: var(--accent); color: #000; border: none;
+    border-radius: 10px; font-family: var(--font); font-size: 15px; font-weight: 700;
+    padding: 14px; cursor: pointer; transition: all .18s;
+  }
+  .setup-btn:hover { background: var(--accent2); transform: translateY(-1px); }
+  .setup-note { font-size: 11px; color: var(--muted); text-align: center; margin-top: 14px; line-height: 1.6; }
+  .setup-note a { color: var(--accent); text-decoration: none; }
+
+  /* ── App shell ── */
+  #app { display: flex; flex-direction: column; height: 100dvh; max-width: 860px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; height: 60px; border-bottom: 1px solid var(--border);
+    background: var(--surface); position: sticky; top: 0; z-index: 10;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo { font-size: 26px; color: var(--accent); animation: pulse 3s ease-in-out infinite; }
+  .app-title { font-size: 17px; font-weight: 800; letter-spacing: -.5px; }
+  .app-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .header-btns { display: flex; gap: 8px; }
+  .hbtn {
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--muted); font-family: var(--font); font-size: 12px; font-weight: 600;
+    padding: 6px 12px; cursor: pointer; transition: all .18s;
+  }
+  .hbtn:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+
+  /* ── Chat ── */
+  .chat-main { flex: 1; overflow: hidden; }
+  .chat-window {
+    height: 100%; overflow-y: auto; padding: 28px 20px 16px;
+    display: flex; flex-direction: column; gap: 18px; scroll-behavior: smooth;
+  }
+  .chat-window::-webkit-scrollbar { width: 4px; }
+  .chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ── Empty state ── */
+  .empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; gap: 12px; padding: 40px 20px;
+    animation: fadeUp .5s ease;
+  }
+  .empty-icon { font-size: 52px; color: var(--accent); animation: pulse 3s ease-in-out infinite; }
+  .empty h2 { font-size: 22px; font-weight: 700; }
+  .empty p { color: var(--muted); font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; max-width: 500px; }
+  .chip {
+    padding: 7px 14px; border: 1px solid var(--border); border-radius: 999px;
+    font-size: 12px; color: var(--muted); background: var(--surface); cursor: pointer; transition: all .18s;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Bubbles ── */
+  .row { display: flex; align-items: flex-end; gap: 10px; animation: slideUp .25s ease; }
+  .row-user { flex-direction: row-reverse; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .av-bot { background: var(--surface2); border: 1px solid var(--border); color: var(--accent); font-size: 16px; }
+  .av-user { background: var(--user); color: var(--accent); border: 1px solid var(--accent); }
+  .bubble { max-width: min(68%, 560px); padding: 12px 16px; border-radius: var(--radius); line-height: 1.65; }
+  .bubble-user { background: var(--user); border: 1px solid #2a4a70; border-bottom-right-radius: 4px; }
+  .bubble-bot  { background: var(--bot);  border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .bubble-text { font-size: 14.5px; word-break: break-word; }
+  .bubble-text pre { background: #0a0b10; border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 8px 0; }
+  .bubble-text code { font-family: var(--mono); font-size: 13px; background: #0a0b10; padding: 2px 5px; border-radius: 4px; }
+  .btime { display: block; font-size: 10px; color: var(--muted); margin-top: 5px; text-align: right; }
+
+  /* ── Typing ── */
+  .typing { display: flex; gap: 5px; align-items: center; padding: 14px 18px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .5; animation: blink 1.2s ease-in-out infinite; }
+  .dot:nth-child(2) { animation-delay: .2s; }
+  .dot:nth-child(3) { animation-delay: .4s; }
+
+  /* ── Error ── */
+  .error-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 20px; background: rgba(255,77,109,.12); border-top: 1px solid var(--danger);
+    color: var(--danger); font-size: 13px;
+  }
+  .error-bar button { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 16px; }
+
+  /* ── Input ── */
+  .chat-footer { padding: 12px 16px 16px; border-top: 1px solid var(--border); background: var(--surface); }
+  .input-box {
+    display: flex; align-items: flex-end; gap: 10px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; transition: border-color .2s;
+  }
+  .input-box:focus-within { border-color: var(--accent); }
+  textarea#msg {
+    flex: 1; background: transparent; border: none; outline: none; color: var(--text);
+    font-family: var(--font); font-size: 14px; line-height: 1.6; resize: none;
+    min-height: 24px; max-height: 160px; padding: 0;
+  }
+  textarea#msg::placeholder { color: var(--muted); }
+  .input-actions { display: flex; align-items: flex-end; gap: 6px; }
+  .btn-mic {
+    width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; font-size: 18px;
+    display: flex; align-items: center; justify-content: center; transition: all .18s;
+  }
+  .btn-mic:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-mic.listening { color: var(--danger); border-color: var(--danger); animation: pulse .8s infinite; }
+  .btn-send {
+    width: 36px; height: 36px; border-radius: 8px; border: none; background: var(--accent);
+    color: #000; font-size: 18px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .18s; flex-shrink: 0;
+  }
+  .btn-send:hover:not(:disabled) { background: var(--accent2); transform: scale(1.05); }
+  .btn-send:disabled { background: var(--surface2); color: var(--muted); cursor: default; }
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,.3); border-top-color: #000; border-radius: 50%; animation: spin .6s linear infinite; }
+
+  /* ── Animations ── */
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.5} }
+  @keyframes blink { 0%,100%{opacity:.2;transform:scale(.85)}50%{opacity:1;transform:scale(1)} }
+  @keyframes spin  { to{transform:rotate(360deg)} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeUp  { from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)} }
+
+  /* ── Responsive ── */
+  @media(max-width:600px){
+    .app-title{font-size:15px}
+    .chat-window{padding:16px 12px}
+    .chat-footer{padding:10px 12px 12px}
+    .bubble{max-width:85%}
+    .hbtn-label{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     CHAT APP
+════════════════════════════════════════════════════ -->
+<div id="app">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">◈</div>
+      <div>
+        <div class="app-title">Nexus AI</div>
+        <div class="app-sub">Powered by Groq</div>
+      </div>
+    </div>
+    <div class="header-btns">
+      <button class="hbtn" onclick="clearChat()">⟳ <span class="hbtn-label">Clear</span></button>
+    </div>
+  </header>
+
+  <!-- Chat window -->
+  <main class="chat-main">
+    <div class="chat-window" id="chatWindow">
+      <div class="empty" id="emptyState">
+        <div class="empty-icon">◈</div>
+        <h2>How can I help you today?</h2>
+        <p>Ask me anything — I'm here to assist.</p>
+        <div class="chips">
+          <div class="chip" onclick="sendChip(this)">Explain quantum computing simply</div>
+          <div class="chip" onclick="sendChip(this)">Write a Python sorting algorithm</div>
+          <div class="chip" onclick="sendChip(this)">Best way to learn React?</div>
+          <div class="chip" onclick="sendChip(this)">Summarise the French Revolution</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Error bar -->
+  <div class="error-bar" id="errorBar" style="display:none">
+    <span id="errorMsg"></span>
+    <button onclick="hideError()">✕</button>
+  </div>
+
+  <!-- Footer input -->
+  <footer class="chat-footer">
+    <div class="input-box">
+      <textarea id="msg" rows="1"
+        placeholder="Message Nexus AI… (Enter to send, Shift+Enter for new line)"
+        oninput="autoGrow(this)" onkeydown="handleKey(event)"></textarea>
+      <div class="input-actions">
+        <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="Voice input">🎙</button>
+        <button class="btn-send" id="sendBtn" onclick="sendMessage()" disabled>↑</button>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+// ── API Key (stored in localStorage, never hardcoded) ─────────────────────
+const API_KEY = 'put your api key here ';
+const SYSTEM_PROMPT = 'You are a helpful, friendly, and knowledgeable AI assistant. Use markdown when helpful.';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let history = [{ role: 'system', content: SYSTEM_PROMPT }];
+let loading = false;
+let recognition = null;
+let listening = false;
+
+// ── Init: restore saved chat ───────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('nx_history') || '[]');
+    if (saved.length) {
+      history = [{ role: 'system', content: SYSTEM_PROMPT }, ...saved];
+      saved.forEach(m => { if (m.role !== 'system') renderBubble(m.role, m.content, m.ts); });
+      document.getElementById('emptyState').style.display = 'none';
+    }
+  } catch(e) {}
+  document.getElementById('msg').focus();
+});
+
+// ── Send message ──────────────────────────────────────────────────────────
+async function sendMessage(text) {
+  const ta = document.getElementById('msg');
+  const content = (text || ta.value).trim();
+  if (!content || loading) return;
+
+  ta.value = '';
+  ta.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('emptyState').style.display = 'none';
+  hideError();
+
+  const ts = new Date().toISOString();
+  renderBubble('user', content, ts);
+
+  history.push({ role: 'user', content, ts });
+  saveHistory();
+
+  // Typing indicator
+  const typingId = 'typing-' + Date.now();
+  renderTyping(typingId);
+  loading = true;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + API_KEY
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: history.map(({ role, content }) => ({ role, content })),
+        max_tokens: 1024,
+        temperature: 0.7,
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error?.message || 'Groq API error ' + res.status);
+    }
+
+    const reply = data.choices[0].message.content.trim();
+    const replyTs = new Date().toISOString();
+
+    removeTyping(typingId);
+    renderBubble('assistant', reply, replyTs);
+
+    history.push({ role: 'assistant', content: reply, ts: replyTs });
+    saveHistory();
+
+  } catch (err) {
+    removeTyping(typingId);
+    showError(err.message);
+  } finally {
+    loading = false;
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+function sendChip(el) { sendMessage(el.textContent); }
+
+// ── Render ────────────────────────────────────────────────────────────────
+function renderBubble(role, content, ts) {
+  const win = document.getElementById('chatWindow');
+  const isUser = role === 'user';
+
+  const row = document.createElement('div');
+  row.className = 'row ' + (isUser ? 'row-user' : '');
+
+  const av = document.createElement('div');
+  av.className = 'avatar ' + (isUser ? 'av-user' : 'av-bot');
+  av.textContent = isUser ? 'U' : '◈';
+
+  const bub = document.createElement('div');
+  bub.className = 'bubble ' + (isUser ? 'bubble-user' : 'bubble-bot');
+
+  const txt = document.createElement('div');
+  txt.className = 'bubble-text';
+  txt.innerHTML = renderMd(content);
+
+  const time = document.createElement('time');
+  time.className = 'btime';
+  time.textContent = formatTime(ts);
+
+  bub.appendChild(txt);
+  bub.appendChild(time);
+  row.appendChild(av);
+  row.appendChild(bub);
+  win.appendChild(row);
+  win.scrollTop = win.scrollHeight;
+}
+
+function renderTyping(id) {
+  const win = document.getElementById('chatWindow');
+  const row = document.createElement('div');
+  row.className = 'row'; row.id = id;
+
+  const av = document.createElement('div');
+  av.className = 'avatar av-bot'; av.textContent = '◈';
+
+  const bub = document.createElement('div');
+  bub.className = 'bubble bubble-bot typing';
+  bub.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+
+  row.appendChild(av); row.appendChild(bub);
+  win.appendChild(row);
+  win.scrollTop = win.scrollHeight;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+// ── Markdown renderer ─────────────────────────────────────────────────────
+function renderMd(t) {
+  return t
+    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br/>');
+}
+
+// ── Input helpers ─────────────────────────────────────────────────────────
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  document.getElementById('sendBtn').disabled = !el.value.trim();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+// ── Voice input ───────────────────────────────────────────────────────────
+function toggleVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Voice input is not supported in this browser. Try Chrome.'); return; }
+  const btn = document.getElementById('micBtn');
+
+  if (listening) {
+    recognition?.stop();
+    listening = false;
+    btn.classList.remove('listening');
+    btn.textContent = '🎙';
+    return;
+  }
+
+  recognition = new SR();
+  recognition.lang = navigator.language || 'en-US';
+  recognition.interimResults = false;
+  recognition.onresult = e => {
+    const t = e.results[0][0].transcript;
+    const ta = document.getElementById('msg');
+    ta.value = ta.value ? ta.value + ' ' + t : t;
+    autoGrow(ta);
+  };
+  recognition.onend = () => {
+    listening = false;
+    btn.classList.remove('listening');
+    btn.textContent = '🎙';
+  };
+  recognition.start();
+  listening = true;
+  btn.classList.add('listening');
+  btn.textContent = '⏹';
+}
+
+// ── Clear chat ────────────────────────────────────────────────────────────
+function clearChat() {
+  const win = document.getElementById('chatWindow');
+  // Remove all bubbles but keep empty state
+  [...win.querySelectorAll('.row')].forEach(r => r.remove());
+  document.getElementById('emptyState').style.display = 'flex';
+  history = [{ role: 'system', content: SYSTEM_PROMPT }];
+  localStorage.removeItem('nx_history');
+  hideError();
+}
+
+// ── Persist ───────────────────────────────────────────────────────────────
+function saveHistory() {
+  const msgs = history.filter(m => m.role !== 'system').slice(-40);
+  localStorage.setItem('nx_history', JSON.stringify(msgs));
+}
+
+// ── Error ─────────────────────────────────────────────────────────────────
+function showError(msg) {
+  document.getElementById('errorMsg').textContent = '⚠ ' + msg;
+  document.getElementById('errorBar').style.display = 'flex';
+}
+function hideError() { document.getElementById('errorBar').style.display = 'none'; }
+
+// ── Utils ─────────────────────────────────────────────────────────────────
+function formatTime(iso) {
+  try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+  catch { return ''; }
+}
+
+
+</script>
+</body>
+</html>
